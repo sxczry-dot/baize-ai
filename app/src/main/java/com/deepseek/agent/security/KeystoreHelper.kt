@@ -20,17 +20,23 @@ class KeystoreHelper(context: Context) {
     )
 
     /** 同步写盘并返回是否成功；失败时 UI 应提示用户重新保存。 */
-    fun saveApiKey(key: String): Boolean =
-        runCatching { prefs.edit().putString(KEY_API_KEY, key).commit() }.getOrDefault(false)
+    fun saveApiKey(provider: String, key: String): Boolean =
+        runCatching { prefs.edit().putString("api_key_$provider", key).commit() }.getOrDefault(false)
 
-    fun getApiKey(): String? {
+    fun getApiKey(provider: String): String? {
         // 加密存储文件损坏时不能拖垮整个 App
-        val k = runCatching { prefs.getString(KEY_API_KEY, null) }.getOrNull()
-        return if (k.isNullOrBlank()) null else k
+        val k = runCatching { prefs.getString("api_key_$provider", null) }.getOrNull()
+        if (!k.isNullOrBlank()) return k
+        // 兼容旧版：DeepSeek 的旧存储键
+        if (provider == "DEEPSEEK") {
+            val legacy = runCatching { prefs.getString(KEY_API_KEY, null) }.getOrNull()
+            if (!legacy.isNullOrBlank()) return legacy
+        }
+        return null
     }
 
-    fun clearApiKey() {
-        runCatching { prefs.edit().remove(KEY_API_KEY).commit() }
+    fun clearApiKey(provider: String) {
+        runCatching { prefs.edit().remove("api_key_$provider").commit() }
     }
 
     companion object {

@@ -42,7 +42,7 @@ class ChatViewModel(
     private val toolRegistry: ToolRegistry,
     private val sessionDao: SessionDao,
     private val messageDao: MessageDao,
-    settingsStore: SettingsStore
+    private val settingsStore: SettingsStore
 ) : ViewModel(), ConfirmationGate {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -114,8 +114,8 @@ class ChatViewModel(
 
     fun send(userInput: String, imagePath: String? = null) {
         if ((userInput.isBlank() && imagePath == null) || _isStreaming.value) return
-        if (!repository.hasApiKey()) {
-            _toast.tryEmit("请先到设置中填写 DeepSeek API Key")
+        if (!repository.hasApiKeyFor(currentModel.value)) {
+            _toast.tryEmit("请先到设置中填写该模型的 API Key")
             return
         }
         agentJob = viewModelScope.launch {
@@ -136,13 +136,54 @@ class ChatViewModel(
             _messages.value = list
             messageDao.insertAll(listOf(userMsg.toEntity(sessionId!!, json)))
 
-            // 带图消息自动用视觉模型（视觉模型不带工具，纯问答）
+            // 带图消息自动切到当前供应商的视觉模型（视觉模型不带工具，纯问答）
             val model = if (imagePath != null) {
-                _toast.tryEmit("已自动切换为视觉模型")
-                SettingsStore.MODEL_VISION
+                val cur = com.deepseek.agent.data.remote.ModelCatalog.of(currentModel.value)
+                val visionModel = com.deepseek.agent.data.remote.ModelCatalog.all
+                    .firstOrNull { it.provider == cur?.provider && it.vision }
+                if (visionModel != null) {
+                    if (visionModel.id != currentModel.value) {
+                        _toast.tryEmit("已自动切换为 ${visionModel.provider.displayName} 的视觉模型")
+                    }
+                    visionModel.id
+                } else {
+                    _toast.tryEmit("当前供应商没有视觉模型，图片将被忽略")
+                    currentModel.value
+                }
             } else currentModel.value
 
             runAgentLoop(list, model)
+            updateSessionTimestamp()
+        }
+    }
+
+    /** 重新生成最后一条 AI 回复：移除最后一段 assistant 回复及其工具结果，重发上一条用户消息。 */
+    fun setModel(value: String) {
+        viewModelScope.launch { settingsStore.setModel(value) }
+    }
+
+    fun regenerate() {
+        if (_isStreaming.value) return
+        if (!repository.hasApiKeyFor(currentModel.value)) {
+            _toast.tryEmit("请先到设置中填写该模型的 API Key")
+            return
+        }
+        val list = _messages.value.toMutableList()
+        val removedIds = mutableListOf<String>()
+        while (list.isNotEmpty() && list.last().role != "user") {
+            val removed = list.removeAt(list.size - 1)
+            removedIds.add(removed.id)
+        }
+        if (removedIds.isEmpty()) {
+            _toast.tryEmit("没有可重新生成的回复")
+            return
+        }
+        _messages.value = list
+        agentJob = viewModelScope.launch {
+            if (removedIds.isNotEmpty()) {
+                runCatching { messageDao.deleteByIds(removedIds) }
+            }
+            runAgentLoop(list, currentModel.value)
             updateSessionTimestamp()
         }
     }

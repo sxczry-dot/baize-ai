@@ -14,8 +14,8 @@ android {
         applicationId = "com.deepseek.agent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 38
-        versionName = "1.6.17"
+        versionCode = 66
+        versionName = "1.7.2"
     }
 
     buildTypes {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,10 +35,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import com.deepseek.agent.viewmodel.SettingsViewModel
 
@@ -48,9 +51,10 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val allowWrite by vm.allowWrite.collectAsState()
     val allowShell by vm.allowShell.collectAsState()
     val userProfile by vm.userProfile.collectAsState()
-    var apiKeyInput by remember { mutableStateOf("") }
-    var hasKey by remember { mutableStateOf(vm.hasApiKey()) }
-    var justSaved by remember { mutableStateOf(false) }
+    var keyInputs by remember { mutableStateOf(mapOf<String, String>()) }
+    var keyFlags by remember { mutableStateOf(mapOf<String, Boolean>()) }
+    var expandedKeys by rememberSaveable { mutableStateOf(false) }
+    var expandedModels by rememberSaveable { mutableStateOf(false) }
     var profileInput by remember { mutableStateOf(userProfile) }
 
     Scaffold(
@@ -73,60 +77,130 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ---- API Key ----
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("DeepSeek API Key", style = MaterialTheme.typography.titleMedium)
-                    OutlinedTextField(
-                        value = apiKeyInput,
-                        onValueChange = { apiKeyInput = it; justSaved = false },
-                        label = { Text("sk-…") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(
-                            onClick = {
-                                if (apiKeyInput.isNotBlank()) {
-                                    vm.saveApiKey(apiKeyInput)
-                                    apiKeyInput = ""
-                                    hasKey = true
-                                    justSaved = true
+            // ---- 各供应商 API Key（折叠） ----
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { expandedKeys = !expandedKeys },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("API Key", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Icon(
+                            Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (expandedKeys) "收起" else "展开",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.rotate(if (expandedKeys) 180f else 0f)
+                        )
+                    }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = expandedKeys,
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Spacer(Modifier.height(4.dp))
+            listOf(
+                Triple("DEEPSEEK", "DeepSeek API Key", "在 platform.deepseek.com 注册充值后，在「API Keys」页面创建密钥。"),
+                Triple("KIMI", "Kimi API Key", "在 platform.kimi.com 注册充值后，在「API Keys」页面创建密钥。"),
+                Triple("GLM", "GLM API Key", "在 open.bigmodel.cn 注册充值后，在「API 密钥」页面创建密钥。"),
+                Triple("QWEN", "千问 API Key", "在 bailian.console.aliyun.com 开通百炼后，在「API-KEY 管理」页面创建密钥。")
+            ).forEach { (provider, title, guide) ->
+                val input = keyInputs[provider] ?: ""
+                val hasKey = vm.hasApiKey(provider)
+                val saved = keyFlags[provider] ?: false
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(title, style = MaterialTheme.typography.titleMedium)
+                        OutlinedTextField(
+                            value = input,
+                            onValueChange = { v -> keyInputs = keyInputs + (provider to v) },
+                            label = { Text("sk-…") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = {
+                                    if (input.isNotBlank()) {
+                                        vm.saveApiKey(provider, input)
+                                        keyInputs = keyInputs + (provider to "")
+                                        keyFlags = keyFlags + (provider to true)
+                                    }
+                                },
+                                enabled = input.isNotBlank()
+                            ) { Text("保存") }
+                            if (hasKey) {
+                                TextButton(onClick = {
+                                    vm.clearApiKey(provider)
+                                    keyFlags = keyFlags + (provider to false)
+                                }) {
+                                    Text("清除已存 Key")
                                 }
-                            },
-                            enabled = apiKeyInput.isNotBlank()
-                        ) { Text("保存") }
-                        if (hasKey) {
-                            TextButton(onClick = { vm.clearApiKey(); hasKey = false; justSaved = false }) {
-                                Text("清除已存 Key")
+                            }
+                            if (saved) {
+                                Text("已保存", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                            } else if (hasKey) {
+                                Text("已存有 Key", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
                         }
-                        if (justSaved) {
-                            Text("已保存", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
-                        } else if (hasKey) {
-                            Text("已存有 Key", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            guide + "Key 只保存在你手机的加密存储中，不会上传到任何服务器。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                         }
                     }
-                    Text(
-                        "在 platform.deepseek.com 注册并充值后，在「API Keys」页面创建密钥。" +
-                            "Key 只保存在你手机的加密存储中，不会上传到任何服务器。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
+            }
 
-            // ---- 模型选择 ----
+            // ---- 默认模型（按供应商分组，折叠） ----
             Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("默认模型", style = MaterialTheme.typography.titleMedium)
-                    ModelChoice("deepseek-v4-pro", "深度思考版（聪明，适合复杂任务）", model, vm::setModel)
-                    ModelChoice("deepseek-v4-flash", "快速版（便宜，适合简单问答）", model, vm::setModel)
-                    ModelChoice("deepseek-v4-flash-vision-exp", "视觉实验版（支持发图片，实验性质）", model, vm::setModel)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { expandedModels = !expandedModels },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("默认模型", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Icon(
+                            Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (expandedModels) "收起" else "展开",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.rotate(if (expandedModels) 180f else 0f)
+                        )
+                    }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = expandedModels,
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Spacer(Modifier.height(4.dp))
+                    com.deepseek.agent.data.remote.Provider.entries.forEach { provider ->
+                        val defs = com.deepseek.agent.data.remote.ModelCatalog.all.filter { it.provider == provider }
+                        if (defs.isEmpty()) return@forEach
+                        Text(
+                            provider.displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        defs.forEach { def ->
+                            ModelChoice(def.id, def.label, model, vm::setModel)
+                        }
+                    }
+                        }
+                    }
                 }
             }
 
@@ -252,8 +326,8 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 
             // ---- 关于 ----
             Text(
-                "本应用为独立开发的第三方客户端，直连 DeepSeek 开放平台 API，与 DeepSeek 官方无隶属关系。" +
-                    "使用产生的一切费用由你的 DeepSeek 账户承担。",
+                "本应用为独立开发的第三方客户端，直连 DeepSeek、Kimi、GLM、千问各家开放平台的官方 API，与任何一家均无隶属关系。" +
+                    "使用产生的费用由你对应平台的账户承担。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

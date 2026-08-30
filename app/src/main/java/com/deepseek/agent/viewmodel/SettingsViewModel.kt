@@ -26,14 +26,14 @@ class SettingsViewModel(
     val userProfile: StateFlow<String> = settingsStore.userProfile
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
-    fun hasApiKey(): Boolean = keystore.getApiKey() != null
+    fun hasApiKey(provider: String): Boolean = keystore.getApiKey(provider) != null
 
-    fun saveApiKey(key: String) {
-        keystore.saveApiKey(key.trim())
+    fun saveApiKey(provider: String, key: String) {
+        keystore.saveApiKey(provider, key.trim())
     }
 
-    fun clearApiKey() {
-        keystore.clearApiKey()
+    fun clearApiKey(provider: String) {
+        keystore.clearApiKey(provider)
     }
 
     fun setModel(value: String) {

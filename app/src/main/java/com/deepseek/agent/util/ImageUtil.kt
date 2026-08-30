@@ -10,6 +10,21 @@ import kotlin.math.max
 /** 选图后压缩保存到应用私有目录，返回文件路径（失败返回 null）。 */
 object ImageUtil {
 
+    /** 把任意 content uri 复制到缓存目录，返回本地路径 */
+    fun copyToCache(context: Context, uri: Uri): String? {
+        return runCatching {
+            val ext = context.contentResolver.getType(uri)
+                ?.substringAfterLast('/')
+                ?.takeIf { it.length <= 5 }
+                ?: "bin"
+            val out = java.io.File(context.cacheDir, "attach_${System.currentTimeMillis()}.$ext")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                out.outputStream().use { input.copyTo(it) }
+            }
+            out.absolutePath
+        }.getOrNull()
+    }
+
     fun compressAndSave(context: Context, uri: Uri, maxDim: Int = 1280, quality: Int = 82): String? {
         return try {
             val resolver = context.contentResolver
