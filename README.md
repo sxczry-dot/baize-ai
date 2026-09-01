@@ -1,11 +1,15 @@
 # 白泽 Baize AI — 安卓 AI 助手
 
-直连 DeepSeek 的原生安卓 AI 客户端（Kotlin + Jetpack Compose），支持流式对话和智能体工具（文件操作、执行命令、网页访问）。API 密钥存储于系统加密保险库。
+原生安卓 AI 客户端（Kotlin + Jetpack Compose），直连 DeepSeek、Kimi、GLM、千问四家 API，支持流式对话、文件与图片上传、智能体工具（文件操作、执行命令、网页访问）。API 密钥存储于系统加密保险库。
 
 ## 功能
 
 - 流式对话（SSE），消息气泡 + 打字效果
-- 模型切换：deepseek-v4-pro / deepseek-v4-flash
+- 四家 AI 供应商、11 个模型可切换：
+  - DeepSeek：v4-pro / v4-flash / 视觉版
+  - Kimi：kimi-k3（100 万字上下文，原生看图）
+  - GLM：GLM-5.3 / 5.3-Flash（可看图看视频）/ 5.2
+  - 千问：qwen3.8-max / qwen3.7-plus / qwen3.8-flash / qwen3-vl-plus（视觉）
 - 智能体工具（工作区限定在应用私有 files/workspace，每次弹确认）：
   - list_directory — 列出目录
   - read_file — 读取文件
@@ -20,7 +24,7 @@
 
 1. Android Studio (Jellyfish+, SDK 35) 打开本项目 → Gradle 同步。
 2. 连 arm64 真机（API 26+）→ Run。
-3. 首次打开 → 设置 → 填 DeepSeek API Key（https://platform.deepseek.com 申请）→ 保存 → 返回聊天。
+3. 首次打开 → 设置 → 填写所选 AI 厂商的 API Key（如 DeepSeek 在 <https://platform.deepseek.com> 申请）→ 保存 → 返回聊天。
 
 ## 模块结构
 
