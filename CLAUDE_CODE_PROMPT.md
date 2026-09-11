@@ -18,7 +18,7 @@
 DeepSeek API 兼容 OpenAI 格式，base_url = `https://api.deepseek.com`，
 兼容 Anthropic 格式 base_url = `https://api.deepseek.com/anthropic`。
 本项目**优先使用 OpenAI 兼容格式**（更简单），模型默认 `deepseek-v4-pro`，
-快问快答可选 `deepseek-v4-flash`。API Key 由用户在设置页输入，存 Keystore，不硬编码。
+快问快答可选 `deepseek-flash`（V4.1，原生看图）。API Key 由用户在设置页输入，存 Keystore，不硬编码。
 
 OpenAI 兼容端点与请求体（参考实现）：
 - 端点：`POST https://api.deepseek.com/chat/completions`
@@ -112,7 +112,7 @@ OpenAI 兼容端点与请求体（参考实现）：
     若引入 Markdown 库请在 build.gradle.kts 加依赖并在 README 说明），底部输入框+发送按钮，
     流式输出时显示打字动画。消息含"工具调用"时显示可折叠的 ToolCallCard（工具名+参数+结果+状态）。
   - `SettingsScreen`：API Key 输入（密码框，从 Keystore 读取/保存）、默认模型下拉
-    （deepseek-v4-pro / deepseek-v4-flash）、工作区路径显示/重置、危险操作开关
+    （deepseek-v4-pro / deepseek-flash）、工作区路径显示/重置、危险操作开关
     （"允许写入文件"/"允许执行 Shell"，默认关闭）、清空会话按钮。
   - `SessionsScreen`（侧边抽屉）：会话列表，新建/重命名/删除，点击切换。
 - 权限确认弹窗：`AlertDialog` 显示工具名、参数预览（截断 500 字）、确认/拒绝。

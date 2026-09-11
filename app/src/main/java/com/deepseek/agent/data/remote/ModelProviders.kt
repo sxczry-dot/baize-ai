@@ -22,8 +22,7 @@ object ModelCatalog {
     val all: List<ModelDef> = listOf(
         // DeepSeek
         ModelDef("deepseek-v4-pro", Provider.DEEPSEEK, "专业版 · 最强，稍慢"),
-        ModelDef("deepseek-v4-flash", Provider.DEEPSEEK, "极速版 · 快，日常够用"),
-        ModelDef("deepseek-v4-flash-vision-exp", Provider.DEEPSEEK, "视觉版 · 看图，不带工具", vision = true, tools = false),
+        ModelDef("deepseek-flash", Provider.DEEPSEEK, "极速版 V4.1 · 快，可看图", vision = true),
         // Kimi
         ModelDef("kimi-k3", Provider.KIMI, "旗舰 · 最强，100 万字上下文，原生看图", vision = true),
         // GLM

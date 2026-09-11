@@ -20,8 +20,7 @@ class SettingsStore(private val context: Context) {
         val USER_PROFILE = stringPreferencesKey("user_profile")
 
         const val MODEL_PRO = "deepseek-v4-pro"
-        const val MODEL_FLASH = "deepseek-v4-flash"
-        const val MODEL_VISION = "deepseek-v4-flash-vision-exp"
+        const val MODEL_FLASH = "deepseek-flash"
     }
 
     val model: Flow<String> = context.dataStore.data.map { prefs ->
@@ -29,6 +28,8 @@ class SettingsStore(private val context: Context) {
             null -> MODEL_PRO
             // 中间版本误存过带 [1m] 后缀的名字，迁移回官方模型名
             "deepseek-v4-pro[1m]" -> MODEL_PRO
+            // 旧 flash 与视觉版名字已由官方路由到 V4.1 Flash（deepseek-flash），统一迁移
+            "deepseek-v4-flash", "deepseek-v4-flash-vision-exp" -> MODEL_FLASH
             else -> v
         }
     }
